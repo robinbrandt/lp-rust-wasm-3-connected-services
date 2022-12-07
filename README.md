@@ -1,2 +1,3 @@
-# create-an-image-resizing-service-lp-author
-Repository for liveProject: Create an Image-Resizing Service
+# Add a dependent microservice and UI
+
+Repository for liveProject: Add a dependent microservice and UI
