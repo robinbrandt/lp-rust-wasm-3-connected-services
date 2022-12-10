@@ -11,9 +11,7 @@
     alert("Error:" + err);
   }
 
-  function onAddFormSubmit(e) {
-    e.preventDefault();
-
+  function onComputeButton() {
     const data = {
       order_id : parseFloat(orderIdField.value),
       product_id : parseFloat(productIdField.value),
@@ -30,12 +28,14 @@
       headers: { "Content-type": "application/json" },
     })
     .then(response => response.json())
-    .then(json => updateAddOrderForm(json));
+    .then(json => updateOrderForm(json));
   }
 
-  function updateAddOrderForm(json) {
+  function updateOrderForm(json) {
+    alert("The order total for " + json.order_id + " has been updated to " + json.total);
     totalField.value = json.total;
   }
 
-  addOrderForm.addEventListener("submit", onAddFormSubmit);
+  document.getElementById("compute").addEventListener("click", onComputeButton);
+
 })();
