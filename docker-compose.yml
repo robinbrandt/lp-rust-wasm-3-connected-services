@@ -13,9 +13,6 @@ services:
       context: sales_tax_rate
     ports:
       - 8001:8001
-    environment:
-      DATABASE_URL: mysql://root:whalehello@db:3306/mysql
-      RUST_BACKTRACE: full
     restart: unless-stopped
     runtime: io.containerd.wasmedge.v1
 
