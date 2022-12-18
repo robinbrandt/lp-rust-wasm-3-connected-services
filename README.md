@@ -1,4 +1,4 @@
-# Add a dependent microservice and UI
+# Compose multiple wasm microservices together
 
 ## Build
 
