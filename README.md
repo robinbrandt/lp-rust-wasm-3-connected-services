@@ -1,4 +1,4 @@
-# Compose multiple wasm microservices together
+# Multiple Connected Microservices
 
 ## Build
 
