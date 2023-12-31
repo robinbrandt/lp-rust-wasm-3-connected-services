@@ -83,15 +83,14 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, anyhow::Er
                 .context("taxes for provided zip code not available");
 
             if rate.is_err() {
-                let response = Response::builder()
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(Body::from(
-                        json!({
-                            "error": rate.err().unwrap().to_string()
-                        })
-                        .to_string(),
-                    ))
-                    .unwrap();
+                let mut response = response_build(
+                    json!({
+                        "error": rate.err().unwrap().to_string()
+                    })
+                    .to_string()
+                    .as_str(),
+                );
+                *response.status_mut() = StatusCode::BAD_REQUEST;
                 return Ok(response);
             }
 
