@@ -1,12 +1,14 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::net::SocketAddr;
-use std::convert::Infallible;
-use std::str;
+use anyhow::Context;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Method, Request, Response, StatusCode, Server};
+use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::str;
 
 lazy_static! {
     static ref SALES_TAX_RATE_SERVICE: String = {
@@ -70,15 +72,30 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, anyhow::Er
             let mut order: Order = serde_json::from_slice(&byte_stream).unwrap();
 
             let client = reqwest::Client::new();
-            let rate = client.post(&*SALES_TAX_RATE_SERVICE)
+            let rate = client
+                .post(&*SALES_TAX_RATE_SERVICE)
                 .body(order.shipping_zip.clone())
                 .send()
                 .await?
                 .text()
                 .await?
-                .parse::<f32>()?;
+                .parse::<f32>()
+                .context("taxes for provided zip code not available");
 
-            order.total = order.subtotal * (1.0 + rate);
+            if rate.is_err() {
+                let response = Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from(
+                        json!({
+                            "error": rate.err().unwrap().to_string()
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap();
+                return Ok(response);
+            }
+
+            order.total = order.subtotal * (1.0 + rate.unwrap());
             Ok(response_build(&serde_json::to_string_pretty(&order)?))
         }
 
@@ -96,7 +113,10 @@ fn response_build(body: &str) -> Response<Body> {
     Response::builder()
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        .header("Access-Control-Allow-Headers", "api,Keep-Alive,User-Agent,Content-Type")
+        .header(
+            "Access-Control-Allow-Headers",
+            "api,Keep-Alive,User-Agent,Content-Type",
+        )
         .body(Body::from(body.to_owned()))
         .unwrap()
 }
@@ -104,12 +124,8 @@ fn response_build(body: &str) -> Response<Body> {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr = SocketAddr::from(([0, 0, 0, 0], 8002));
-    let make_svc = make_service_fn(|_| {
-        async move {
-            Ok::<_, Infallible>(service_fn(move |req| {
-                handle_request(req)
-            }))
-        }
+    let make_svc = make_service_fn(|_| async move {
+        Ok::<_, Infallible>(service_fn(move |req| handle_request(req)))
     });
     let server = Server::bind(&addr).serve(make_svc);
     dbg!("Server started on port 8002");
